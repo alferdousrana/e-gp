@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>দরপত্র পাঠশালা — e-GP শেখার অ্যাপ</title>
+<meta name="description" content="৭ সপ্তাহে ধাপে ধাপে e-GP ও সরকারি দরপত্র শেখার মোবাইল-বান্ধব অ্যাপ।">
+<meta name="theme-color" content="#0E5A44">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wdth,wght@75..125,400..800&family=Hind+Siliguri:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar" id="topbar">
+    <a href="#/home" class="brand" aria-label="হোম">
+      <span class="brand-seal" aria-hidden="true">দ</span>
+      <span class="brand-name">দরপত্র পাঠশালা</span>
+    </a>
+    <div class="top-stats">
+      <span class="pill streak" id="tb-streak" title="টানা দিন">🔥 ০</span>
+      <span class="pill xp" id="tb-xp" title="মোট XP">⭐ ০</span>
+    </div>
+  </header>
+
+  <main id="view" tabindex="-1"></main>
+
+  <nav class="tabbar" id="tabbar" aria-label="মূল মেনু">
+    <a href="#/home" data-tab="home"><span class="ti">🗂️</span><span>পাঠপথ</span></a>
+    <a href="#/practice" data-tab="practice"><span class="ti">🎯</span><span>অনুশীলন</span></a>
+    <a href="#/tools" data-tab="tools"><span class="ti">🧰</span><span>টুলস</span></a>
+    <a href="#/me" data-tab="me"><span class="ti">🏅</span><span>অর্জন</span></a>
+  </nav>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="modal" class="modal" hidden></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<script>window.COURSE = { weeks: [] };</script>
+<script src="js/content/week1.js"></script>
+<script src="js/content/week2.js"></script>
+<script src="js/content/week3.js"></script>
+<script src="js/content/week4.js"></script>
+<script src="js/content/week5.js"></script>
+<script src="js/content/week6.js"></script>
+<script src="js/content/week7.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

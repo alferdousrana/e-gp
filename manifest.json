@@ -1,0 +1,18 @@
+{
+  "name": "দরপত্র পাঠশালা — e-GP শেখার অ্যাপ",
+  "short_name": "দরপত্র পাঠশালা",
+  "description": "৭ সপ্তাহে e-GP ও সরকারি দরপত্রে পেশাদার হওয়ার অ্যাপ",
+  "lang": "bn",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EEF2EE",
+  "theme_color": "#0E5A44",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
