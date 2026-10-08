@@ -23,20 +23,44 @@
   const GLOSSARY = [];
   LESSONS.forEach(l => l.cards.forEach(c => { if (c.t === 'terms') c.items.forEach(([k, v]) => { if (!GLOSSARY.some(g => g.k === k)) GLOSSARY.push({ k, v, lesson: l.id }); }); }));
 
-  /* ---------- state ---------- */
+  /* ---------- state (local-first; ক্লাউড সিঙ্ক js/sync.js-এ) ---------- */
   const KEY = 'darpotro-pathshala-v1';
+  const DEV_KEY = 'darpotro-device-id';
+  const DEV = (() => { try { let d = localStorage.getItem(DEV_KEY); if (!d) { d = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); localStorage.setItem(DEV_KEY, d); } return d; } catch (e) { return 'd-local'; } })();
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const fresh = () => ({
-    name: '', xp: 0, done: {}, streak: { count: 0, last: '' }, best: 0, badges: [], wrong: [],
-    sheets: [], checklist: {}, bid: { rows: {}, notes: {}, title: '' }, daily: '', dailyCount: 0,
-    perfect: 0, known: [], matchBest: null, finalScore: null, finalDate: '', log: {},
+    name: '', xp: 0, xpDev: {}, done: {}, streak: { count: 0, last: '' }, best: 0, badges: [], wrong: [],
+    sheets: [], deleted: {}, checklist: {}, bid: { rows: {}, notes: {}, title: '' }, daily: '', dailyCount: 0,
+    perfect: 0, fixed: 0, known: [], matchBest: null, finalScore: null, finalDate: '', log: {},
+    track: { role: '', tasks: {} }, labs: [],
+    stats: { lab: 0, labBest: 0, convo: {}, seqWins: 0, sprintBest: 0, boqWins: 0, calc: {}, mockBest: null, mockCount: 0 },
+    epoch: 0, _u: 0, ver: 2,
     settings: { sound: true, theme: 'auto', unlockAll: false }
   });
+  function normalize(o) {
+    const f = fresh();
+    const S2 = Object.assign(f, o || {}, {
+      settings: Object.assign(f.settings, (o && o.settings) || {}),
+      stats: Object.assign(f.stats, (o && o.stats) || {}),
+      track: Object.assign(f.track, (o && o.track) || {})
+    });
+    // v1 → v2 মাইগ্রেশন: XP ডিভাইসভিত্তিক কাউন্টারে, শিটে আইডি
+    if (!S2.xpDev || !Object.keys(S2.xpDev).length) S2.xpDev = S2.xp ? { [DEV]: S2.xp } : {};
+    S2.xp = Object.values(S2.xpDev).reduce((a, b) => a + b, 0);
+    S2.sheets = (S2.sheets || []).map(sh => sh.id ? sh : Object.assign({ id: uid(), u: Date.now() }, sh));
+    S2.ver = 2;
+    return S2;
+  }
   let S = load();
   function load() {
-    try { const r = localStorage.getItem(KEY); if (r) { const o = JSON.parse(r); return Object.assign(fresh(), o, { settings: Object.assign(fresh().settings, o.settings || {}) }); } } catch (e) { /* storage unavailable */ }
-    return fresh();
+    try { const r = localStorage.getItem(KEY); if (r) return normalize(JSON.parse(r)); } catch (e) { /* storage unavailable */ }
+    return normalize(null);
   }
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } }
+  const stable = o => JSON.stringify(o, (k, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.keys(v).sort().reduce((r, x) => (r[x] = v[x], r), {}) : v);
+  const same = (a, b) => stable(a) === stable(b);
+  const listeners = { save: [], remote: [] };
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } }
+  function save() { S._u = Date.now(); persist(); listeners.save.forEach(f => { try { f(S); } catch (e) { } }); }
 
   /* ---------- levels & badges ---------- */
   const LEVELS = [
@@ -68,7 +92,19 @@
     { id: 'daily', i: '📅', n: 'নিয়মিত যোদ্ধা', d: '৫টি দৈনিক চ্যালেঞ্জ', t: () => S.dailyCount >= 5 },
     { id: 'sheet', i: '📝', n: 'বিশ্লেষক', d: 'প্রথম Analysis Sheet', t: () => S.sheets.length >= 1 },
     { id: 'fixer', i: '🩹', n: 'ভুল থেকে শিক্ষা', d: 'ভুলের খাতা থেকে ১০টি ঠিক', t: () => (S.fixed || 0) >= 10 },
-    { id: 'pro', i: '👑', n: 'e-GP প্রো', d: 'চূড়ান্ত পরীক্ষায় ৭০%+', t: () => S.finalScore !== null && S.finalScore >= 70 }
+    { id: 'pro', i: '👑', n: 'e-GP প্রো', d: 'চূড়ান্ত পরীক্ষায় ৭০%+', t: () => S.finalScore !== null && S.finalScore >= 70 },
+    { id: 'w8', i: '🏛️', n: 'টেবিলের ওপাশে', d: 'সপ্তাহ ৮ (PE) শেষ', t: () => weekDone(8) },
+    { id: 'w9', i: '🚀', n: 'নতুন নিয়মের মাস্টার', d: 'সপ্তাহ ৯ শেষ', t: () => weekDone(9) },
+    { id: 'lab1', i: '🔬', n: 'বিজ্ঞপ্তি বিশ্লেষক', d: 'প্রথম বিজ্ঞপ্তি ল্যাব সম্পন্ন', t: () => S.stats.lab >= 1 },
+    { id: 'lab10', i: '🧪', n: 'ল্যাবের বিজ্ঞানী', d: '১০টি বিজ্ঞপ্তি বিশ্লেষণ', t: () => S.stats.lab >= 10 },
+    { id: 'labfull', i: '🧠', n: 'পুরোপুরি বুঝেছি', d: 'বোঝার পরীক্ষায় ১০০%', t: () => S.stats.labBest >= 100 },
+    { id: 'talk', i: '💬', n: 'কথায় পাকা', d: '৩টি কথোপকথনে ৮০%+', t: () => Object.values(S.stats.convo).filter(v => v >= 80).length >= 3 },
+    { id: 'seq', i: '🧩', n: 'ধাপের কারিগর', d: 'ধাপ সাজাও খেলায় ৫ জয়', t: () => S.stats.seqWins >= 5 },
+    { id: 'sprint', i: '⏱️', n: 'বিদ্যুৎ বিচারক', d: 'বাতিল নাকি টিকবে — ১৫+ স্কোর', t: () => S.stats.sprintBest >= 15 },
+    { id: 'boq', i: '🧾', n: 'হিসাবের গোয়েন্দা', d: 'BOQ ভুল ধরো — ৫ জয়', t: () => S.stats.boqWins >= 5 },
+    { id: 'mock', i: '📜', n: 'বাস্তব পরীক্ষার্থী', d: 'কেস পরীক্ষায় ৭০%+', t: () => S.stats.mockBest !== null && S.stats.mockBest >= 70 },
+    { id: 'tender_pro', i: '🥇', n: 'দরদাতা প্রো', d: 'দরদাতার প্রো পথ ১০০%', t: () => (APP.trackPct ? APP.trackPct('tenderer') : 0) >= 100 },
+    { id: 'pe_pro', i: '🎖️', n: 'PE প্রো', d: 'ক্রয়কারীর প্রো পথ ১০০%', t: () => (APP.trackPct ? APP.trackPct('pe') : 0) >= 100 }
   ];
   function checkBadges() {
     BADGES.forEach(b => {
@@ -91,7 +127,8 @@
   function addXP(n, el) {
     if (!n) return;
     const before = levelOf(S.xp).i;
-    S.xp += n; S.log[today()] = (S.log[today()] || 0) + n;
+    S.xpDev[DEV] = (S.xpDev[DEV] || 0) + n; S.xp = Object.values(S.xpDev).reduce((a, b) => a + b, 0);
+    S.log[today()] = (S.log[today()] || 0) + n;
     touchStreak();
     const after = levelOf(S.xp);
     if (after.i > before) setTimeout(() => { toast(`🎉 নতুন স্তর: ${after.name}`); sound('level'); confetti(); }, 400);
@@ -162,19 +199,27 @@
   }
 
   /* ---------- unlocking ---------- */
-  const unlocked = l => S.settings.unlockAll || l.idx === 0 || !!S.done[LESSONS[l.idx - 1].id] || !!S.done[l.id];
-  const nextLesson = () => LESSONS.find(l => !S.done[l.id]);
+  // মূল কোর্স সপ্তাহ ১–৭; সপ্তাহ ৮ (PE) ও ৯ (প্রো) — প্রতিটির প্রথম পাঠ সবসময় খোলা
+  const CORE_MAX = 7;
+  const CORE = () => LESSONS.filter(l => l.week <= CORE_MAX);
+  const firstOfWeek = l => { const w = COURSE.weeks.find(x => x.n === l.week); return w && w.lessons[0] === l; };
+  const unlocked = l => S.settings.unlockAll || l.idx === 0 || (l.week > CORE_MAX && firstOfWeek(l)) || !!S.done[LESSONS[l.idx - 1].id] || !!S.done[l.id];
+  const coreDone = () => CORE().every(l => S.done[l.id]);
+  const coreLeft = () => CORE().filter(l => !S.done[l.id]).length;
+  const nextLesson = () => LESSONS.find(l => !S.done[l.id] && unlocked(l)) || LESSONS.find(l => !S.done[l.id]);
   const allDone = () => LESSONS.every(l => S.done[l.id]);
 
-  /* ---------- router ---------- */
+  /* ---------- router (v2: মডিউলগুলো APP.page() দিয়ে নিজের পাতা যোগ করে) ---------- */
+  const PAGES = {}, TABFOR = {}, IMMERSIVE = new Set(['lesson']);
+  function page(name, fn, tab, immersive) { PAGES[name] = fn; if (tab) TABFOR[name] = tab; if (immersive) IMMERSIVE.add(name); }
+  let current = 'home';
   function route() {
     const parts = (location.hash.replace(/^#\/?/, '') || 'home').split('/');
-    const p = parts[0], a = parts[1];
-    document.body.classList.toggle('immersive', p === 'lesson');
-    const tabFor = { home: 'home', practice: 'practice', flash: 'practice', match: 'practice', wrong: 'practice', daily: 'practice', glossary: 'practice', tools: 'tools', sheet: 'tools', bid: 'tools', checklist: 'tools', final: 'home', me: 'me', cert: 'me' };
-    $$('#tabbar a').forEach(x => x.classList.toggle('active', x.dataset.tab === tabFor[p]));
-    const pages = { home: pHome, lesson: () => pLesson(a), practice: pPractice, flash: pFlash, match: pMatch, wrong: pWrong, daily: pDaily, glossary: pGlossary, tools: pTools, sheet: () => pSheet(a), bid: pBid, checklist: pChecklist, final: pFinal, me: pMe, cert: pCert };
-    (pages[p] || pHome)();
+    const p = parts[0], a = parts[1], b = parts[2];
+    current = PAGES[p] ? p : 'home';
+    document.body.classList.toggle('immersive', IMMERSIVE.has(current));
+    $$('#tabbar a').forEach(x => x.classList.toggle('active', x.dataset.tab === TABFOR[current]));
+    (PAGES[current])(a, b);
     window.scrollTo(0, 0);
     view.focus({ preventScroll: true });
   }
@@ -197,6 +242,7 @@
       ${nx ? `<a class="btn block" href="#/lesson/${nx.id}">${doneCount() ? 'চালিয়ে যাও' : 'প্রথম পাঠ শুরু করো'}: ${esc(nx.title)}</a>`
         : `<a class="btn block" href="#/final">চূড়ান্ত পরীক্ষা দাও</a>`}
     </section>`;
+    APP.hooks.homeTop.forEach(f => { h += f(); });
     COURSE.weeks.forEach(w => {
       h += `<section class="week ${weekDone(w.n) ? 'done' : ''}">
         <div class="week-head"><div class="week-num"><small>সপ্তাহ</small><b>${bn(w.n)}</b></div>
@@ -209,14 +255,15 @@
         h += u ? `<a class="node ${cls}" href="#/lesson/${l.id}"><div class="nt"><b>${esc(l.title)}</b><span>${sub}</span></div>${right}</a>`
           : `<div class="node ${cls}" aria-disabled="true"><div class="nt"><b>${esc(l.title)}</b><span>আগের পাঠ শেষ করলে খুলবে</span></div>${right}</div>`;
       });
-      if (w.n === COURSE.weeks[COURSE.weeks.length - 1].n) {
-        const fu = allDone() || S.settings.unlockAll;
-        h += `<a class="node final ${fu ? '' : 'locked'}" href="${fu ? '#/final' : '#/home'}"><div class="nt"><b>চূড়ান্ত ব্যবহারিক পরীক্ষা</b><span>${S.finalScore !== null ? `সর্বোচ্চ স্কোর ${bn(S.finalScore)}%` : fu ? 'অদেখা দরপত্র বিশ্লেষণ' : 'সব পাঠ শেষে খুলবে'}</span></div><span class="ns">${fu ? '🏆' : '🔒'}</span></a>`;
+      if (w.n === CORE_MAX) {
+        const fu = coreDone() || S.settings.unlockAll;
+        h += `<a class="node final ${fu ? '' : 'locked'}" href="${fu ? '#/final' : '#/home'}"><div class="nt"><b>চূড়ান্ত ব্যবহারিক পরীক্ষা</b><span>${S.finalScore !== null ? `সর্বোচ্চ স্কোর ${bn(S.finalScore)}%` : fu ? 'অদেখা দরপত্র বিশ্লেষণ' : 'সপ্তাহ ১–৭ শেষে খুলবে'}</span></div><span class="ns">${fu ? '🏆' : '🔒'}</span></a>`;
       }
       h += `</div></section>`;
     });
     h += `<p class="small muted" style="text-align:center">আইন ও বিধি সময়ের সাথে বদলায়। বাস্তব দরপত্রে সবসময় সংশ্লিষ্ট দরপত্র দলিল, সর্বশেষ PPR ও BPPA-এর পরিপত্র যাচাই করে নাও।</p>`;
     view.innerHTML = h;
+    bindInstall();
   }
 
   /* =========================================================
@@ -350,7 +397,8 @@
       ${l.takeaway ? `<div class="panel" style="text-align:left"><b>আজকের মূল কথা</b><p style="margin:.4em 0 0">${l.takeaway}</p></div>` : ''}
       </div>
       <div class="player-foot"><div class="inner stack">
-        ${nx ? `<a class="btn block" href="#/lesson/${nx.id}">পরের পাঠ: ${esc(nx.title)}</a>` : `<a class="btn block gold" href="#/final">চূড়ান্ত পরীক্ষায় যাও</a>`}
+        ${l.week === CORE_MAX && coreDone() && (S.finalScore === null || S.finalScore < 70) ? `<a class="btn block gold" href="#/final">চূড়ান্ত পরীক্ষায় যাও</a>` : ''}
+        ${nx ? `<a class="btn ${l.week === CORE_MAX && coreDone() ? 'ghost' : ''} block" href="#/lesson/${nx.id}">পরের পাঠ: ${esc(nx.title)}</a>` : `<a class="btn block gold" href="#/path">প্রো পথে যাও</a>`}
         <a class="btn ghost block" href="#/home">পাঠপথে ফিরে যাও</a></div></div></div>`;
     addXP(bonus);
     sound('done'); vibrate([30, 60, 30]); confetti();
@@ -368,6 +416,7 @@
         <a class="tile" href="#/match"><span class="ic">⚡</span><b>মিলাও খেলা</b><span>পরিভাষা আর অর্থ মিলাও, সময়ের সাথে পাল্লা${S.matchBest ? ` · সেরা ${bn(S.matchBest)} সে.` : ''}</span></a>
         <a class="tile" href="#/wrong"><span class="ic">🩹</span><b>ভুলের খাতা</b><span>${S.wrong.length ? `${bn(S.wrong.length)}টি প্রশ্ন আবার চেষ্টা করো` : 'এখন খালি — দারুণ!'}</span></a>
         <a class="tile" href="#/glossary"><span class="ic">📖</span><b>পরিভাষা অভিধান</b><span>যেকোনো শব্দ খুঁজে নাও</span></a>
+        ${APP.hooks.practiceTiles.map(f => f()).join('')}
       </div>`;
   }
 
@@ -492,7 +541,8 @@
         <a class="tile wide" href="#/sheet"><span class="ic">📝</span><div><b>Tender Analysis Sheet</b><br><span>যেকোনো দরপত্রের মূল তথ্য এক পাতায় সাজাও ও সংরক্ষণ করো · ${bn(S.sheets.length)}টি সংরক্ষিত</span></div></a>
         <a class="tile wide" href="#/bid"><span class="ic">⚖️</span><div><b>Bid / No-Bid বিশ্লেষক</b><br><span>অংশ নেবে কি নেবে না — ৯টি বিষয়ে যাচাই করে সুপারিশ</span></div></a>
         <a class="tile wide" href="#/checklist"><span class="ic">✅</span><div><b>সাবমিশন চেকলিস্ট</b><br><span>জমা দেওয়ার আগে শেষ মুহূর্তের বাতিল-প্রতিরোধ তালিকা</span></div></a>
-        <a class="tile wide feature" href="#/final"><span class="ic">🏆</span><div><b>চূড়ান্ত ব্যবহারিক পরীক্ষা</b><br><span>${allDone() || S.settings.unlockAll ? 'অদেখা দরপত্রের পূর্ণ বিশ্লেষণ' : `সব পাঠ শেষে খুলবে · বাকি ${bn(LESSONS.length - doneCount())}টি`}</span></div></a>
+        ${APP.hooks.toolsTiles.map(f => f()).join('')}
+        <a class="tile wide feature" href="#/final"><span class="ic">🏆</span><div><b>চূড়ান্ত ব্যবহারিক পরীক্ষা</b><br><span>${coreDone() || S.settings.unlockAll ? 'অদেখা দরপত্রের পূর্ণ বিশ্লেষণ' : `সপ্তাহ ১–৭ শেষে খুলবে · বাকি ${bn(coreLeft())}টি`}</span></div></a>
       </div>`;
   }
 
@@ -526,7 +576,8 @@
         ${S.sheets.length ? S.sheets.map((s, i) => `<a class="node" href="#/sheet/${i}"><div class="nt"><b>${esc(s.title || 'নামহীন শিট')}</b><span>${esc(s.pe || '')} ${s.close ? '· শেষ সময় ' + esc(s.close.replace('T', ' ')) : ''}</span></div><span class="chip">${esc((s.decision || '').split(' (')[0] || '—')}</span></a>`).join('') : '<div class="panel empty">এখনো কোনো শিট নেই। ই-জিপি থেকে যেকোনো একটা IT দরপত্র নিয়ে প্রথম শিট বানিয়ে ফেলো!</div>'}`;
       return;
     }
-    const isNew = id === 'new', idx = isNew ? -1 : +id, data = isNew ? {} : (S.sheets[idx] || {});
+    const isNew = id === 'new', idx = isNew ? -1 : +id, data = isNew ? (APP.sheetDraft || {}) : (S.sheets[idx] || {});
+    APP.sheetDraft = null;
     view.innerHTML = `<a class="back" href="#/sheet">← সব শিট</a><h1>${isNew ? 'নতুন শিট' : 'শিট সম্পাদনা'}</h1>
       <div class="panel" id="sf">${SHEET_FIELDS.map(([k, label, type, ph]) => `<div class="field"><label for="f-${k}">${label}</label>${type === 'area' ? `<textarea id="f-${k}" placeholder="${esc(ph)}">${esc(data[k] || '')}</textarea>`
       : type === 'select' ? `<select id="f-${k}">${ph.map(o => `<option ${data[k] === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`
@@ -536,8 +587,8 @@
       ${isNew ? '' : '<button class="btn danger block" id="dl">শিট মুছে ফেলো</button>'}</div>`;
     const collect = () => { const o = {}; SHEET_FIELDS.forEach(([k]) => o[k] = $('#f-' + k).value.trim()); return o; };
     $('#sv').onclick = e => {
-      const o = collect(); o.saved = today();
-      if (isNew) { S.sheets.unshift(o); addXP(15, e.currentTarget); } else S.sheets[idx] = o;
+      const o = collect(); o.saved = today(); o.u = Date.now();
+      if (isNew) { o.id = uid(); S.sheets.unshift(o); addXP(15, e.currentTarget); } else { o.id = S.sheets[idx].id || uid(); S.sheets[idx] = o; }
       save(); checkBadges(); toast('📝 শিট সংরক্ষণ হয়েছে'); location.hash = '#/sheet';
     };
     $('#cp').onclick = () => {
@@ -546,7 +597,7 @@
       copy(txt);
     };
     $('#pr').onclick = () => window.print();
-    if (!isNew) $('#dl').onclick = () => { if (confirm('এই শিট মুছে ফেলবে?')) { S.sheets.splice(idx, 1); save(); location.hash = '#/sheet'; } };
+    if (!isNew) $('#dl').onclick = () => { if (confirm('এই শিট মুছে ফেলবে?')) { const gone = S.sheets.splice(idx, 1)[0]; if (gone && gone.id) S.deleted[gone.id] = Date.now(); save(); location.hash = '#/sheet'; } };
   }
   function copy(txt) {
     const done = () => toast('📋 কপি হয়েছে — ইমেইল বা নোটে পেস্ট করো');
@@ -625,8 +676,8 @@
   function pFinal() {
     const F = COURSE.final;
     if (!F) { location.hash = '#/home'; return; }
-    if (!(allDone() || S.settings.unlockAll)) {
-      view.innerHTML = `<a class="back" href="#/home">← পাঠপথ</a><h1>চূড়ান্ত ব্যবহারিক পরীক্ষা</h1><div class="panel empty">🔒 সব ${bn(LESSONS.length)}টি পাঠ শেষ হলে এই পরীক্ষা খুলবে। এখন বাকি ${bn(LESSONS.length - doneCount())}টি।</div>`;
+    if (!(coreDone() || S.settings.unlockAll)) {
+      view.innerHTML = `<a class="back" href="#/home">← পাঠপথ</a><h1>চূড়ান্ত ব্যবহারিক পরীক্ষা</h1><div class="panel empty">🔒 মূল কোর্সের (সপ্তাহ ১–৭) ${bn(CORE().length)}টি পাঠ শেষ হলে এই পরীক্ষা খুলবে। এখন বাকি ${bn(coreLeft())}টি।</div>`;
       return;
     }
     view.innerHTML = `<a class="back" href="#/home">← পাঠপথ</a><h1>চূড়ান্ত ব্যবহারিক পরীক্ষা</h1>
@@ -679,7 +730,7 @@
     view.innerHTML = `<a class="back no-print" href="#/me">← অর্জন</a><div class="cert">
       <div class="small muted">দরপত্র পাঠশালা</div><h2>সমাপনী সনদ</h2><p>এই মর্মে প্রত্যয়ন করা যাচ্ছে যে</p>
       <div class="nm">${esc(S.name || 'শিক্ষার্থী')}</div>
-      <p>৭ সপ্তাহের “e-GP ও সরকারি দরপত্র পেশাদার শিক্ষাক্রম”-এর ${bn(LESSONS.length)}টি পাঠ এবং চূড়ান্ত ব্যবহারিক পরীক্ষা ${bn(S.finalScore)}% নম্বরসহ সফলভাবে সম্পন্ন করেছেন।</p>
+      <p>“e-GP ও সরকারি দরপত্র পেশাদার শিক্ষাক্রম”-এর মূল ${bn(CORE().length)}টি পাঠ এবং চূড়ান্ত ব্যবহারিক পরীক্ষা ${bn(S.finalScore)}% নম্বরসহ সফলভাবে সম্পন্ন করেছেন।</p>
       <p class="small muted">তারিখ: ${bn(S.finalDate || today())}</p>
       <div class="stamp"><div><b>e-GP প্রো</b><small>উত্তীর্ণ</small></div></div></div>
       <p class="small muted" style="text-align:center;margin-top:10px">এটি ব্যক্তিগত শেখার অগ্রগতির স্মারক, কোনো সরকারি সনদ নয়।</p>
@@ -709,6 +760,9 @@
       <h2>ব্যাজ <span class="chip">${bn(S.badges.length)}/${bn(BADGES.length)}</span></h2>
       <div class="badges">${BADGES.map(b => `<div class="badge ${S.badges.includes(b.id) ? '' : 'off'}"><div class="bi">${b.i}</div><b>${b.n}</b><span>${b.d}</span></div>`).join('')}</div>
       ${S.finalScore !== null && S.finalScore >= 70 ? '<a class="btn gold block" style="margin-top:14px" href="#/cert">আমার সনদ দেখো</a>' : ''}
+      <h2 style="margin-top:22px">অ্যাপ ও সিঙ্ক</h2>
+      ${installCard()}
+      ${APP.hooks.meTop.map(f => f()).join('')}
       <h2 style="margin-top:22px">সেটিংস</h2>
       <div class="panel">
         <div class="setting"><div><b>শব্দ</b><div class="small muted">সঠিক/ভুল উত্তরে ছোট শব্দ</div></div><label class="switch"><input type="checkbox" id="snd" ${S.settings.sound ? 'checked' : ''}><i></i></label></div>
@@ -719,6 +773,7 @@
         <button class="btn danger block" id="rst" style="margin-top:14px">সব অগ্রগতি মুছে ফেলো</button>
       </div>`;
     $('#nm').onclick = askName;
+    bindInstall(); APP.hooks.meBind && APP.hooks.meBind();
     $('#snd').onchange = e => { S.settings.sound = e.target.checked; save(); };
     $('#thm').onchange = e => { S.settings.theme = e.target.value; save(); applyTheme(); };
     $('#ula').onchange = e => { S.settings.unlockAll = e.target.checked; save(); toast(e.target.checked ? 'সব পাঠ খোলা হলো' : 'ক্রমানুসারে খুলবে'); };
@@ -729,10 +784,10 @@
     $('#im').onchange = e => {
       const f = e.target.files[0]; if (!f) return;
       const r = new FileReader();
-      r.onload = () => { try { const o = JSON.parse(r.result); if (typeof o.xp !== 'number') throw 0; S = Object.assign(fresh(), o); save(); applyTheme(); topbar(); toast('✅ ব্যাকআপ ফেরানো হয়েছে'); pMe(); } catch (err) { toast('ফাইলটি সঠিক ব্যাকআপ নয়'); } };
+      r.onload = () => { try { const o = JSON.parse(r.result); if (typeof o.xp !== 'number') throw 0; const ep = S.epoch; S = normalize(o); S.epoch = Math.max(ep, o.epoch || 0) + 1; save(); applyTheme(); topbar(); toast('✅ ব্যাকআপ ফেরানো হয়েছে'); pMe(); } catch (err) { toast('ফাইলটি সঠিক ব্যাকআপ নয়'); } };
       r.readAsText(f);
     };
-    $('#rst').onclick = () => { if (confirm('সব XP, পাঠ, ব্যাজ ও শিট মুছে যাবে। নিশ্চিত?')) { S = fresh(); save(); topbar(); location.hash = '#/home'; setTimeout(askName, 300); } };
+    $('#rst').onclick = () => { if (confirm('সব XP, পাঠ, ব্যাজ ও শিট মুছে যাবে — সিঙ্ক চালু থাকলে অন্য ডিভাইস থেকেও। নিশ্চিত?')) { const ep = S.epoch; S = normalize(null); S.epoch = ep + 1; save(); topbar(); location.hash = '#/home'; setTimeout(askName, 300); } };
   }
   function askName() {
     modal(`<h2>তোমার নাম কী?</h2><p class="muted">সনদ ও শুভেচ্ছায় এই নাম দেখাবে।</p>
@@ -744,10 +799,106 @@
     });
   }
 
-  /* ---------- boot ---------- */
-  applyTheme(); topbar(); route();
-  if (!S.name && !S.xp) setTimeout(askName, 400);
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-    navigator.serviceWorker.register('sw.js').catch(() => { });
+  /* ---------- পাতা নিবন্ধন ---------- */
+  page('home', pHome, 'home'); page('lesson', pLesson, null, true); page('final', pFinal, 'home');
+  page('practice', pPractice, 'practice'); page('flash', pFlash, 'practice'); page('match', pMatch, 'practice');
+  page('wrong', pWrong, 'practice'); page('daily', pDaily, 'practice'); page('glossary', pGlossary, 'practice');
+  page('tools', pTools, 'tools'); page('sheet', pSheet, 'tools'); page('bid', pBid, 'tools'); page('checklist', pChecklist, 'tools');
+  page('me', pMe, 'me'); page('cert', pCert, 'me');
+
+  /* =========================================================
+     ইনস্টল (মোবাইল ও ডেস্কটপ) — PWA
+     ========================================================= */
+  let deferredPrompt = null;
+  const isStandalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches || navigator.standalone === true;
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const installState = () => isStandalone() ? 'installed' : deferredPrompt ? 'ready' : isIOS() ? 'ios' : 'manual';
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; installUI(); });
+  window.addEventListener('appinstalled', () => { deferredPrompt = null; installUI(); toast('📲 অ্যাপ ইনস্টল হয়েছে! এখন হোম স্ক্রিন বা ডেস্কটপ থেকে খোলো'); });
+  function installUI() {
+    const b = $('#tb-install'); if (!b) return;
+    b.hidden = installState() === 'installed';
+    if ((current === 'me' || current === 'home') && $('#install-box')) route();
   }
+  function installCard() {
+    const st = installState();
+    if (st === 'installed') return `<div class="panel install-card done" id="install-box"><div class="row"><span class="ic">✅</span><div><b>অ্যাপ হিসেবে চলছে</b><div class="small muted">এই ডিভাইসে দরপত্র পাঠশালা ইনস্টল করা আছে। ইন্টারনেট ছাড়াও খুলবে।</div></div></div></div>`;
+    return `<div class="panel install-card" id="install-box"><div class="row"><span class="ic">📲</span><div class="grow"><b>মোবাইল ও কম্পিউটারে ইনস্টল করো</b><div class="small muted">আলাদা অ্যাপের মতো খুলবে, ইন্টারনেট ছাড়াও চলবে, ব্রাউজারের ঝামেলা থাকবে না।</div></div></div>
+      <button class="btn block" data-install style="margin-top:12px">${st === 'ready' ? 'এখনই ইনস্টল করো' : 'কীভাবে ইনস্টল করব?'}</button></div>`;
+  }
+  function bindInstall() { $$('[data-install]').forEach(b => b.onclick = doInstall); }
+  async function doInstall() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      try { const r = await deferredPrompt.userChoice; if (r.outcome === 'accepted') toast('📲 ইনস্টল হচ্ছে…'); } catch (e) { }
+      deferredPrompt = null; installUI(); return;
+    }
+    const ios = isIOS();
+    modal(`<h2>ইনস্টল করার নিয়ম</h2>
+      ${ios ? `<ol class="flow"><li>Safari-তে অ্যাপটি খোলো</li><li>নিচের <b>Share</b> বোতাম (⬆️ চিহ্নের বাক্স) চাপো</li><li><b>Add to Home Screen</b> বেছে নাও</li><li>ডান দিকের <b>Add</b> চাপো — হোম স্ক্রিনে আইকন চলে আসবে</li></ol>`
+      : `<h3>📱 অ্যান্ড্রয়েড ফোন</h3><ol class="flow"><li>Chrome-এ অ্যাপটি খোলো</li><li>ওপরে ডানে ⋮ মেনু চাপো</li><li><b>Install app</b> বা <b>Add to Home screen</b> চাপো</li></ol>
+        <h3>💻 কম্পিউটার (Windows / Mac / Linux)</h3><ol class="flow"><li>Chrome বা Microsoft Edge-এ অ্যাপটি খোলো</li><li>ঠিকানা বারের ডান পাশে ইনস্টল চিহ্ন (🖥️⬇) চাপো, অথবা মেনু → <b>Install দরপত্র পাঠশালা</b></li><li>এরপর ডেস্কটপ/স্টার্ট মেনু থেকে আলাদা উইন্ডোতে খুলবে</li></ol>
+        <p class="small muted">Firefox-এ এই সুবিধা নেই — Chrome বা Edge ব্যবহার করো।</p>`}
+      <button class="btn block" id="mclose">বুঝেছি</button>`, () => { $('#mclose').onclick = closeModal; });
+  }
+
+  /* ---------- অনলাইন / অফলাইন ---------- */
+  function netUI() {
+    document.body.classList.toggle('offline', !navigator.onLine);
+    const n = $('#net'); if (n) n.hidden = navigator.onLine;
+  }
+  window.addEventListener('online', () => { netUI(); toast('🌐 আবার অনলাইন — জমে থাকা আপডেট সিঙ্ক হচ্ছে'); });
+  window.addEventListener('offline', () => { netUI(); toast('📴 অফলাইন — চিন্তা নেই, সব কাজ এই ডিভাইসে জমা থাকবে'); });
+
+  /* ---------- Service Worker ও নতুন সংস্করণ ---------- */
+  function registerSW() {
+    if (!('serviceWorker' in navigator) || !(location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) return;
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      const offer = w => {
+        const bar = $('#update-bar'); if (!bar) return;
+        bar.hidden = false;
+        $('#update-go').onclick = () => { w.postMessage('SKIP_WAITING'); bar.hidden = true; };
+      };
+      if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing; if (!nw) return;
+        nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) offer(nw); });
+      });
+      setInterval(() => reg.update().catch(() => { }), 60 * 60 * 1000);
+    }).catch(() => { });
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloaded) return; reloaded = true; location.reload(); });
+  }
+
+  /* ---------- রিমোট (অন্য ডিভাইস) থেকে আসা অবস্থা ---------- */
+  function replaceState(next, why) {
+    const nx = normalize(next);
+    if (same(nx, S)) return false;
+    S = nx;
+    persist(); applyTheme(); topbar();
+    // পড়া বা খেলার মাঝখানে পাতা বদলাব না
+    const busy = IMMERSIVE.has(current) || ['lab', 'convo', 'game', 'mock', 'calc', 'sheet', 'bid', 'checklist'].includes(current);
+    if (!busy) route();
+    if (why) toast(why);
+    return true;
+  }
+
+  /* ---------- অন্য মডিউলের জন্য API ---------- */
+  window.APP = {
+    $, $$, view, bn, esc, today, shuffle, pick, KEYS, uid, DEV, COURSE, LESSONS, GLOSSARY, byId, LEVELS, levelOf, BADGES,
+    get S() { return S; }, save, persist, normalize, same, replaceState, on: (ev, f) => listeners[ev].push(f),
+    addXP, toast, modal, closeModal, sound, vibrate, confetti, checkBadges, copy, gradeShort, runQuestions, topbar,
+    page, route, go: h => { location.hash = h; }, get current() { return current; },
+    installCard, bindInstall, doInstall, installState, sheetDraft: null, doneCount, allDone, weekDone,
+    hooks: { meTop: [], homeTop: [], practiceTiles: [], toolsTiles: [] }
+  };
+
+  /* ---------- boot: সব মডিউল লোড হওয়ার পর ---------- */
+  function boot() {
+    applyTheme(); topbar(); netUI(); route(); installUI();
+    $('#tb-install').onclick = doInstall;
+    if (!S.name && !S.xp) setTimeout(askName, 400);
+    registerSW();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else setTimeout(boot, 0);
 })();

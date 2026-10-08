@@ -1,0 +1,15 @@
+rules_version = '2';
+// দরপত্র পাঠশালা: প্রত্যেক ব্যবহারকারী শুধু নিজের অগ্রগতির ডকুমেন্ট (users/{uid}) পড়তে ও লিখতে পারে।
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.state is string
+        && request.resource.data.state.size() < 900000;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
