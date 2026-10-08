@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>দরপত্র পাঠশালা — e-GP শেখার অ্যাপ</title>
-<meta name="description" content="৭ সপ্তাহে ধাপে ধাপে e-GP ও সরকারি দরপত্র শেখার মোবাইল-বান্ধব অ্যাপ।">
+<meta name="description" content="দরদাতা ও ক্রয়কারী (PE) — দুই পক্ষ থেকে e-GP ও সরকারি দরপত্রে প্রো হওয়ার অ্যাপ। মোবাইল ও ডেস্কটপে ইনস্টলযোগ্য, অফলাইনে চলে, সব ডিভাইসে সিঙ্ক।">
+<meta name="application-name" content="দরপত্র পাঠশালা">
+<meta name="apple-mobile-web-app-title" content="দরপত্র পাঠশালা">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#0E5A44">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -24,15 +27,20 @@
       <span class="brand-name">দরপত্র পাঠশালা</span>
     </a>
     <div class="top-stats">
+      <button class="pill install" id="tb-install" hidden title="অ্যাপ হিসেবে ইনস্টল করো">📲 <span class="lbl">ইনস্টল</span></button>
+      <a class="pill sync" id="tb-sync" href="#/me" title="ক্লাউড সিঙ্ক" hidden>☁️</a>
       <span class="pill streak" id="tb-streak" title="টানা দিন">🔥 ০</span>
       <span class="pill xp" id="tb-xp" title="মোট XP">⭐ ০</span>
     </div>
   </header>
 
+  <div class="netbar" id="net" hidden role="status">📴 অফলাইন মোড — সব কাজ এই ডিভাইসে জমা হচ্ছে, অনলাইন হলেই সিঙ্ক হবে</div>
+  <div class="updatebar" id="update-bar" hidden role="status"><span>✨ অ্যাপের নতুন সংস্করণ প্রস্তুত</span><button class="btn" id="update-go">হালনাগাদ করো</button></div>
   <main id="view" tabindex="-1"></main>
 
   <nav class="tabbar" id="tabbar" aria-label="মূল মেনু">
     <a href="#/home" data-tab="home"><span class="ti">🗂️</span><span>পাঠপথ</span></a>
+    <a href="#/path" data-tab="path"><span class="ti">🧭</span><span>প্রো পথ</span></a>
     <a href="#/practice" data-tab="practice"><span class="ti">🎯</span><span>অনুশীলন</span></a>
     <a href="#/tools" data-tab="tools"><span class="ti">🧰</span><span>টুলস</span></a>
     <a href="#/me" data-tab="me"><span class="ti">🏅</span><span>অর্জন</span></a>
@@ -51,6 +59,13 @@
 <script src="js/content/week5.js"></script>
 <script src="js/content/week6.js"></script>
 <script src="js/content/week7.js"></script>
+<script src="js/content/week8.js"></script>
+<script src="js/content/week9.js"></script>
+<script src="js/content/extras.js"></script>
 <script src="js/app.js"></script>
+<script src="js/lab.js"></script>
+<script src="js/v2.js"></script>
+<script src="js/firebase-config.js"></script>
+<script type="module" src="js/sync.js"></script>
 </body>
 </html>

@@ -36,6 +36,7 @@
   color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
 html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.7;-webkit-tap-highlight-color:transparent}
 img{max-width:100%}
@@ -313,3 +314,183 @@ input[type=text],input[type=date],input[type=datetime-local],select,.field texta
   main{padding:0}
   .panel,.cert{border-color:#999}
 }
+
+/* =====================================================================
+   v2 — ইনস্টল, সিঙ্ক, অফলাইন, ল্যাব, প্রো পথ, কথোপকথন, খেলা, ক্যালকুলেটর, ডেস্কটপ
+   ===================================================================== */
+button.pill{cursor:pointer;color:var(--ink)}
+.pill.install{background:var(--green);color:var(--green-ink);border-color:transparent}
+.pill.sync{text-decoration:none;color:var(--muted)}
+.pill.sync.s-synced{color:var(--ok)}
+.pill.sync.s-syncing{color:var(--gold)}
+.pill.sync.s-offline,.pill.sync.s-error{color:var(--bad)}
+.netbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + 55px);z-index:19;margin:0;padding:7px 16px;background:var(--gold-2);color:var(--ink);font-size:.86rem;font-family:var(--f-head);font-weight:600;text-align:center;border-bottom:1px solid var(--line)}
+.updatebar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 16px;background:var(--green-2);font-family:var(--f-head);font-weight:600;font-size:.92rem}
+.updatebar[hidden],.netbar[hidden]{display:none}
+.updatebar .btn{min-height:38px;padding:6px 14px;font-size:.92rem}
+.install-card .ic,.sync-box .ic{font-size:1.9rem;line-height:1;flex:none}
+.install-card.done{background:var(--ok-2);border-color:transparent}
+.sync-state{font-family:var(--f-head);font-weight:600}
+.sync-state.s-synced{color:var(--ok)}.sync-state.s-error,.sync-state.s-offline{color:var(--bad)}.sync-state.s-syncing{color:var(--gold)}
+.email-login{margin-top:12px;padding-top:6px;border-top:1px dashed var(--line)}
+.email-login summary{cursor:pointer;font-family:var(--f-head);font-weight:650;padding:8px 0}
+.linkbtn{background:none;border:0;padding:8px 0;color:var(--green);text-decoration:underline;cursor:pointer}
+input[type=password],input[type=number]{width:100%;padding:11px 12px;border-radius:12px;border:2px solid var(--line);background:var(--surface);min-height:48px}
+
+/* segmented control & chips */
+.seg{display:flex;gap:4px;padding:4px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line);margin-bottom:14px}
+.seg button{flex:1;min-height:40px;border:0;border-radius:10px;background:transparent;font-family:var(--f-head);font-weight:650;cursor:pointer;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--green);box-shadow:0 1px 0 var(--line),0 0 0 1px var(--line)}
+.chips-row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.chip-btn{padding:8px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;font-family:var(--f-head);font-weight:600;font-size:.88rem;line-height:1.35;text-align:left}
+.chip-btn.on{border-color:var(--green);background:var(--green-2);color:var(--green)}
+
+/* বিজ্ঞপ্তি ল্যাব */
+textarea.lab-in{min-height:200px;font-size:.92rem;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace,var(--f-body)}
+pre.notice.raw{white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace,var(--f-body);font-size:.84rem;line-height:1.55;max-height:60vh;overflow:auto;margin:0;
+  background-image:repeating-linear-gradient(transparent 0 calc(1.55em - 1px),color-mix(in srgb,var(--line) 55%,transparent) calc(1.55em - 1px) 1.55em);background-attachment:local}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line)}
+.kv:last-child{border-bottom:0}
+.kv span{color:var(--muted);font-size:.9rem;flex:none}
+.kv b{text-align:right;font-family:var(--f-head);font-weight:650}
+.lab-summary h2{font-size:1.15rem}
+.flags{list-style:none;padding:0;margin:0}
+.flags li{padding:9px 12px;border-radius:10px;margin-bottom:6px;line-height:1.5}
+.flags li.w{background:var(--gold-2)}
+.flags li.g{background:var(--ok-2)}
+.checks label.miss span:last-child{color:var(--muted)}
+
+/* প্রো পথ */
+.role-pick{display:grid;gap:12px}
+.role-card{display:flex;flex-direction:column;gap:6px;align-items:flex-start;text-align:left;padding:18px;border-radius:var(--r-lg);border:2px solid var(--line);background:var(--surface);cursor:pointer;line-height:1.5}
+.role-card:hover,.role-card:focus-visible{border-color:var(--green)}
+.role-card .ri{font-size:2.4rem;line-height:1}
+.role-card b{font-family:var(--f-head);font-size:1.2rem}
+.path-hero{background:var(--green);color:var(--green-ink);border-radius:22px;padding:18px;margin-bottom:18px}
+.path-hero h1{margin:0;font-size:1.4rem}
+.path-hero .ri{font-size:2.2rem}
+.path-hero .pill{background:color-mix(in srgb,var(--green-ink) 15%,transparent);border-color:transparent}
+.path-hero .meta{display:flex;justify-content:space-between;font-family:var(--f-head);font-weight:650;margin-top:6px}
+.ladder{display:flex;gap:6px;margin-top:16px;align-items:flex-end}
+.rung{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.rung i{display:block;width:100%;border-radius:6px;background:color-mix(in srgb,var(--green-ink) 20%,transparent)}
+.rung:nth-child(1) i{height:14px}.rung:nth-child(2) i{height:22px}.rung:nth-child(3) i{height:30px}.rung:nth-child(4) i{height:38px}.rung:nth-child(5) i{height:46px}
+.rung.done i{background:var(--gold)}
+.rung.cur i{background:var(--green-ink);box-shadow:0 0 0 3px var(--gold)}
+.rung small{font-family:var(--f-head);font-weight:700;opacity:.85}
+.next-up{margin-top:14px;padding-top:14px;border-top:1px dashed color-mix(in srgb,var(--green-ink) 35%,transparent)}
+.next-up b{display:block;font-family:var(--f-head);font-size:1.05rem;margin:2px 0 10px;line-height:1.4}
+.next-up .btn{background:var(--green-ink);color:var(--green);box-shadow:0 3px 0 color-mix(in srgb,var(--green-ink) 55%,#000)}
+details.level{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r-lg);margin-bottom:10px;overflow:hidden}
+details.level[open]{border-color:var(--green)}
+details.level.done{background:var(--surface-2)}
+details.level summary{display:flex;align-items:center;gap:12px;padding:14px;cursor:pointer;list-style:none}
+details.level summary::-webkit-details-marker{display:none}
+.lvn{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--green-2);color:var(--green);font-family:var(--f-head);font-weight:800}
+details.level.done .lvn{background:var(--green);color:var(--green-ink)}
+.items{padding:0 14px 10px}
+.item{display:flex;gap:10px;align-items:flex-start;padding:11px 4px;border-top:1px dashed var(--line);text-decoration:none;color:var(--ink);line-height:1.45;cursor:pointer}
+.item b{font-weight:600;font-family:var(--f-body)}
+.item small{display:block;color:var(--muted);font-size:.8rem;margin-top:2px}
+.item .tick{flex:none;width:22px;text-align:center}
+.item.on b{color:var(--muted)}
+.item.task input{width:22px;height:22px;flex:none;accent-color:var(--green);margin:2px 0 0}
+.toolgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.toolgrid a{display:flex;flex-direction:column;gap:4px;padding:12px;border-radius:14px;background:var(--surface);border:1.5px solid var(--line);text-decoration:none;color:var(--ink);font-family:var(--f-head);font-weight:650;font-size:.92rem}
+.toolgrid span{font-size:1.5rem}
+
+/* হোমের v2 স্ট্রিপ */
+.v2-strip{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:-8px 0 22px}
+.v2c{display:flex;flex-direction:column;gap:2px;padding:14px;border-radius:var(--r-lg);background:var(--surface);border:1.5px solid var(--line);text-decoration:none;color:var(--ink)}
+.v2c .ic{font-size:1.6rem;line-height:1.1}
+.v2c b{font-family:var(--f-head);font-size:1rem;margin-top:4px}
+.v2c span:not(.ic){font-size:.8rem;color:var(--muted);line-height:1.4}
+.v2c.path{grid-column:1/-1;background:var(--gold-2);border-color:var(--gold)}
+.mini-bar{display:block;height:6px;border-radius:9px;background:var(--surface);margin-top:8px;overflow:hidden}
+.mini-bar i{display:block;height:100%;background:var(--gold)}
+
+/* কথোপকথন */
+.convo-log{margin-top:6px}
+.coach{align-self:stretch;padding:10px 13px;border-radius:12px;font-size:.92rem;line-height:1.55;border-left:4px solid}
+.coach.s2{background:var(--ok-2);border-color:var(--ok)}
+.coach.s1{background:var(--gold-2);border-color:var(--gold)}
+.coach.s0{background:var(--bad-2);border-color:var(--bad)}
+
+/* খেলা: ধাপ সাজাও */
+.seq-picked{list-style:none;padding:0;margin:8px 0 14px;counter-reset:s}
+.seq-picked li{counter-increment:s;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.seq-picked li::before{content:counter(s);flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--green);color:var(--green-ink);font-family:var(--f-head);font-weight:700;font-size:.9rem}
+.seq-picked button,.seq-picked .empty-slot span{flex:1;text-align:left;padding:10px 12px;border-radius:12px;border:2px solid var(--green);background:var(--green-2);cursor:pointer;line-height:1.4}
+.seq-picked .empty-slot::before{background:var(--line);color:var(--muted)}
+.seq-picked .empty-slot span{border:2px dashed var(--line);background:transparent;color:var(--muted)}
+.seq-picked button.ok{border-color:var(--ok);background:var(--ok-2)}
+.seq-picked button.bad{border-color:var(--bad);background:var(--bad-2)}
+.seq-pool{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.seq-pool button{text-align:left;padding:11px 13px;border-radius:12px;border:2px solid var(--line);background:var(--surface);cursor:pointer;line-height:1.4;box-shadow:0 2px 0 var(--line)}
+
+/* খেলা: স্প্রিন্ট */
+.sprint-card{margin:16px 0;min-height:170px;display:grid;place-items:center;text-align:center;padding:22px;border-radius:20px;background:var(--surface);border:2px solid var(--line);font-family:var(--f-head);font-weight:650;font-size:1.2rem;line-height:1.5}
+.sprint-card.pop{animation:cardIn .22s ease}
+.sprint-btns .btn{min-height:64px;font-size:1.15rem}
+
+/* খেলা: BOQ */
+table.boq{width:100%;border-collapse:collapse;font-size:.9rem;background:var(--surface);border-radius:12px;overflow:hidden}
+table.boq th,table.boq td{border:1px solid var(--line);padding:9px 8px;text-align:left}
+table.boq th{background:var(--surface-2);font-family:var(--f-head)}
+table.boq td:nth-child(n+2){text-align:right;white-space:nowrap}
+table.boq tr.tap{cursor:pointer}
+table.boq tr.tap:hover td{background:var(--gold-2)}
+table.boq tr.hl td{background:var(--bad-2)}
+table.boq tr.wrongrow td{animation:shake .35s;background:var(--bad-2)}
+table.boq tr.tot td{background:var(--surface-2)}
+
+/* কেস পরীক্ষা */
+.case{padding:12px 14px;border-radius:12px;background:var(--gold-2);border-left:5px solid var(--gold);margin-bottom:12px;line-height:1.6}
+details.review summary{cursor:pointer;font-family:var(--f-head);font-weight:600;line-height:1.45}
+details.review.bad{border-color:color-mix(in srgb,var(--bad) 40%,var(--line))}
+details.review[open] .case{margin-top:10px}
+
+/* ক্যালকুলেটর */
+.boq-row,.eval-row{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:6px;margin-bottom:6px}
+.eval-row{grid-template-columns:.7fr 1fr 1fr auto;align-items:center}
+.boq-row input,.eval-row input[type=text]{min-height:44px;padding:8px 10px}
+.panel .row>.field{flex:1}
+.panel table{width:100%;border-collapse:collapse;font-size:.9rem}
+.panel th,.panel td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+.panel th{background:var(--surface-2);font-family:var(--f-head);font-weight:650}
+tr.warnrow td{background:var(--gold-2)}
+tr.winrow td{background:var(--ok-2)}
+tr.muted td{color:var(--muted)}
+.verdict+.verdict{margin-top:8px}
+
+/* ===== ডেস্কটপ: বাঁ পাশে মেনু, চওড়া লেখা ===== */
+@media (min-width:960px){
+  body{font-size:17.5px}
+  .app{max-width:1120px;display:grid;grid-template-columns:220px minmax(0,1fr);grid-template-rows:auto auto auto 1fr;column-gap:28px;padding:0 24px}
+  .topbar,.netbar,.updatebar{grid-column:1/-1}
+  .topbar{padding:14px 4px}
+  .tabbar{grid-column:1;grid-row:4;position:sticky;top:84px;align-self:start;flex-direction:column;justify-content:flex-start;gap:4px;background:transparent;border:0;padding:16px 0 0}
+  .tabbar a{flex:none;max-width:none;height:auto;flex-direction:row;justify-content:flex-start;gap:12px;padding:12px 14px;border-radius:14px;font-size:1rem}
+  .tabbar a.active{background:var(--surface);box-shadow:0 0 0 1.5px var(--line)}
+  .tabbar .ti{font-size:1.3rem}
+  main{grid-column:2;grid-row:4;max-width:760px;width:100%;padding:16px 0 60px}
+  .tiles{grid-template-columns:repeat(3,1fr)}
+  .v2-strip{grid-template-columns:repeat(4,1fr)}
+  .v2c.path{grid-column:auto}
+  .role-pick{grid-template-columns:1fr 1fr}
+  .badges{grid-template-columns:repeat(4,1fr)}
+  .netbar{top:69px}
+  body.immersive .app{display:block;max-width:none;padding:0}
+  body.immersive main{max-width:none}
+  .stage{max-width:720px;margin:0 auto;width:100%}
+  .player-top{max-width:760px;margin:0 auto;width:100%}
+  .player-foot .inner{max-width:688px}
+  .modal{align-items:center}
+}
+@media (min-width:600px) and (max-width:959px){
+  .v2-strip{grid-template-columns:repeat(2,1fr)}
+}
+@media print{
+  .netbar,.updatebar,.pill.install,.pill.sync{display:none!important}
+}
+@media (max-width:420px){ .pill.install .lbl{display:none} .top-stats{gap:4px} .pill{padding:3px 8px} .brand-name{font-size:1rem} }
